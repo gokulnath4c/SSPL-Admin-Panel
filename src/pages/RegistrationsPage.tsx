@@ -132,6 +132,7 @@ export default function RegistrationsPage() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Player Name</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Type</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Email</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Phone</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Reg Date</th>
@@ -144,7 +145,17 @@ export default function RegistrationsPage() {
             <tbody className="divide-y divide-gray-200">
               {registrations.map((registration) => (
                 <tr key={registration.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 text-sm text-gray-900 font-medium">{registration.player_name}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                    {registration.player_name}
+                    {registration.registration_type === 'team' && registration.team && (
+                      <div className="text-xs text-gray-500 mt-1">Team: {registration.team}</div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${registration.registration_type === 'team' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {registration.registration_type === 'team' ? 'Team' : 'Individual'}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{registration.player_email}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{registration.phone || '-'}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">

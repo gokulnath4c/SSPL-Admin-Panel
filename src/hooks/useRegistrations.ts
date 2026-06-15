@@ -98,8 +98,8 @@ export function useRegistrations(): UseRegistrationsReturn {
     try {
       // NOTE: Temporarily bypassing RPC to ensure we get all fields (City, Pincode) which might be missing in the RPC response
 
-      // Try fetching from the improved view first
-      // Try fetching from the improved view first
+      // Try fetching from the improved view first (DISABLED to get team registration details directly from table)
+      /*
       const { data: viewData, error: viewError } = await supabase
         .from('v_admin_player_registrations')
         .select('*')
@@ -120,9 +120,9 @@ export function useRegistrations(): UseRegistrationsReturn {
       if (viewError) {
         console.warn('View query failed, falling back to direct table query:', viewError.message)
       }
+      */
 
 
-      // Fallback: Try direct query from player_registrations table
       const { data: directData, error: directError } = await supabase
         .from('player_registrations')
         .select(`
@@ -137,7 +137,10 @@ export function useRegistrations(): UseRegistrationsReturn {
             position,
             payment_status,
             payment_amount,
-            status
+            status,
+            registration_type,
+            team,
+            team_members
           `)
         .order('created_at', { ascending: false })
         .range(0, 999) // Initial request
@@ -168,7 +171,10 @@ export function useRegistrations(): UseRegistrationsReturn {
               position,
               payment_status,
               payment_amount,
-              status
+              status,
+              registration_type,
+              team,
+              team_members
             `)
             .order('created_at', { ascending: false })
             .range(from, to)
@@ -202,6 +208,9 @@ export function useRegistrations(): UseRegistrationsReturn {
           payment_status: reg.payment_status || 'pending',
           payment_amount: reg.payment_amount || 0,
           payment_date: reg.payment_date,
+          registration_type: reg.registration_type || 'individual',
+          team: reg.team,
+          team_members: reg.team_members,
           notes: `Position: ${reg.position}`,
         }))
         setRegistrations(mappedData)

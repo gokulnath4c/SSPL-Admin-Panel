@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import * as XLSX from 'xlsx'
+import { supabase } from '../lib/supabase'
 
 import {
     getCompletedRegistrations,
@@ -60,6 +61,7 @@ export default function TrialsWorkflowPage() {
     // Allocation Form removed
 
     // Results Form removed
+    const [totalCaptured, setTotalCaptured] = useState<number>(0)
 
     // Trial Creation Modal
     const [showTrialCreationModal, setShowTrialCreationModal] = useState(false)
@@ -163,6 +165,14 @@ export default function TrialsWorkflowPage() {
                 const stats = await getTrialOverallStats()
                 setDashboardStats(stats)
             } catch (ignore) { console.warn('Failed to fetch stats', ignore); }
+            
+            try {
+                const { count } = await supabase
+                    .from('player_registrations')
+                    .select('*', { count: 'exact', head: true })
+                    .in('payment_status', ['captured', 'completed', 'paid', 'success', 'CAPTURED', 'COMPLETED', 'PAID', 'SUCCESS'])
+                setTotalCaptured(count || 0)
+            } catch (ignore) { console.warn('Failed to fetch total captured', ignore); }
 
             // Always fetch trials
             try {
@@ -632,7 +642,7 @@ export default function TrialsWorkflowPage() {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-gray-600 text-sm">Candidates Pool</p>
-                            <p className="text-3xl font-bold text-gray-900 mt-1">{dashboardStats?.funnel?.l1_pool || 0}</p>
+                            <p className="text-3xl font-bold text-gray-900 mt-1">{totalCaptured || 0}</p>
                         </div>
                         <div className="text-4xl text-blue-500">📋</div>
                     </div>
@@ -658,11 +668,41 @@ export default function TrialsWorkflowPage() {
                     </div>
                 </div>
 
+                <div className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-600 text-sm">L2 Attended</p>
+                            <p className="text-3xl font-bold text-orange-600 mt-1">{dashboardStats?.funnel?.l2_attended || 0}</p>
+                        </div>
+                        <div className="text-4xl text-orange-500">🏏</div>
+                    </div>
+                </div>
+                
+                <div className="bg-white rounded-lg shadow p-6 border-l-4 border-teal-500">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-600 text-sm">L2 Selected</p>
+                            <p className="text-3xl font-bold text-teal-600 mt-1">{dashboardStats?.funnel?.l2_selected || 0}</p>
+                        </div>
+                        <div className="text-4xl text-teal-500">✓</div>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow p-6 border-l-4 border-indigo-500">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-gray-600 text-sm">L3 Attended</p>
+                            <p className="text-3xl font-bold text-indigo-600 mt-1">{dashboardStats?.funnel?.l3_attended || 0}</p>
+                        </div>
+                        <div className="text-4xl text-indigo-500">🏏</div>
+                    </div>
+                </div>
+
                 <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-gray-600 text-sm">Net Finalists</p>
-                            <p className="text-3xl font-bold text-purple-600 mt-1">{dashboardStats?.funnel?.net_finalists || 0}</p>
+                            <p className="text-3xl font-bold text-purple-600 mt-1">{dashboardStats?.funnel?.l3_selected || 0}</p>
                         </div>
                         <div className="text-4xl text-purple-500">🏆</div>
                     </div>
