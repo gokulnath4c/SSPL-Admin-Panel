@@ -32,10 +32,8 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
 
-      {/* Public Home Page */}
-      <Route path="/" element={<MainLayout />}>
-        <Route index element={<HomePage />} />
-      </Route>
+      {/* Redirect Root to Dashboard (which redirects to Login if unauthenticated) */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
       {/* Protected Admin Routes */}
       <Route
