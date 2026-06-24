@@ -239,35 +239,38 @@ export function useDashboard(): UseDashboardReturn {
         { count: level3SelectedCount },
         { count: finalSelectedCount },
         { count: finalRejectedCount },
-        { count: l1CalledCount }
+        { count: l1CalledCount },
+        { count: totalTrialCandidatesCount }
       ] = await Promise.all([
-        supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_attendance', 'ABSENT').eq('l2_attendance', 'ABSENT').eq('l3_attendance', 'ABSENT'),
-        supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED'),
-        supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_result', 'SELECTED').eq('l2_attendance', 'ABSENT').eq('l3_attendance', 'ABSENT'),
-        supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_attendance', 'ABSENT'),
-        supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.ilike.%BATSMAN%,proficiency.ilike.%BATTING%').eq('final_status', 'SELECTED'),
-        supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.ilike.%BOWLER%,proficiency.ilike.%BOWLING%').eq('final_status', 'SELECTED'),
-        supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.ilike.%ALL ROUNDER%,proficiency.ilike.%AR%,proficiency.ilike.%ALL-ROUNDER%').eq('final_status', 'SELECTED'),
-        supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.is.null,proficiency.eq.,proficiency.eq.NA,proficiency.ilike.N/A%').eq('final_status', 'SELECTED'),
+        supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_attendance', 'ABSENT').eq('l2_attendance', 'ABSENT').eq('l3_attendance', 'ABSENT'), // count0: Completely Absent
+        supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED'), // count1: Finally Selected
+        supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_result', 'SELECTED').eq('l2_attendance', 'ABSENT').eq('l3_attendance', 'ABSENT'), // count2: L2 Selected (but not processed for L3)
+        supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_attendance', 'ABSENT'), // count3: L3 Absent
+        supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.ilike.%BATSMAN%,proficiency.ilike.%BATTING%').eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED'),
+        supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.ilike.%BOWLER%,proficiency.ilike.%BOWLING%').eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED'),
+        supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.ilike.%ALL ROUNDER%,proficiency.ilike.%AR%,proficiency.ilike.%ALL-ROUNDER%').eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED'),
+        supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.is.null,proficiency.eq.,proficiency.eq.NA,proficiency.ilike.N/A%').eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('l1_attendance.eq.ABSENT,l2_attendance.eq.ABSENT,l3_attendance.eq.ABSENT'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_result', 'SELECTED'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l2_result', 'SELECTED'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l3_result', 'SELECTED'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('final_status', 'SELECTED'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('final_status', 'REJECTED'),
-        supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_called', true)
+        supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_called', true),
+        supabase.from('trial_view').select('*', { count: 'exact', head: true })
       ]);
 
       level1Selected = level1SelectedCount || 0;
       level2Selected = level2SelectedCount || 0;
       level3Selected = level3SelectedCount || 0;
 
+      const totalTrialCandidates = totalTrialCandidatesCount || 0;
       calledForCount = l1CalledCount || 0;
-      notCalledForCount = Math.max(0, totalRegistrations - calledForCount);
+      notCalledForCount = Math.max(0, totalTrialCandidates - calledForCount);
       selectedCount = finalSelectedCount || 0;
       notSelectedCount = Math.max(0, calledForCount - selectedCount);
       const computedOutStationCount = finalRejectedCount || 0;
-      const inStationTotal = finalSelectedCount || 0;
+      const inStationTotal = (count1 || 0) + (count2 || 0) + (count3 || 0) + (count0 || 0) + notCalledForCount;
 
       setStats({
         totalRegistrations,
@@ -290,10 +293,11 @@ export function useDashboard(): UseDashboardReturn {
         trialDistribution,
         registrationTrend: filteredTrend.length > 0 ? filteredTrend : registrationTrend,
         inPlayersSplit: [
-          { label: 'Completely Absent', count: count0 || 0, icon: '🏃', description: 'Never showed up (ABSENTEES for all)' },
-          { label: 'Fully Selected', count: count1 || 0, icon: '🏆', description: 'Cleared all 3 levels (SELECTED)' },
-          { label: 'L1 Selected, L2 Absent', count: count2 || 0, icon: '👀', description: 'Selected in Level 1, then absent for Level 2' },
-          { label: 'Selected L1 & L2, Absent L3', count: count3 || 0, icon: '🔥', description: 'Selected in L1 & L2, then absent' }
+          { label: 'Finally Selected', count: count1 || 0, icon: '🏆', description: 'Cleared all 3 levels (SELECTED)' },
+          { label: 'Level 2 Selected', count: count2 || 0, icon: '🔥', description: 'Selected in Level 2' },
+          { label: 'Level 3 Absent', count: count3 || 0, icon: '👀', description: 'Attended Level 2, Absent Level 3' },
+          { label: 'Completely Absent', count: count0 || 0, icon: '🏃', description: 'Never showed up (ABSENT for all)' },
+          { label: 'Not Called Players', count: notCalledForCount, icon: '📅', description: 'Recent registrations not yet called' }
         ],
         proficiencySplit: [
           { label: 'Batsman', count: batsmanCount || 0, icon: '🏏', description: 'Players with Batsman proficiency' },

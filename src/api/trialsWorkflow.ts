@@ -1,52 +1,5 @@
 import { supabase } from '../lib/supabase';
 
-// Helper: Generate next trial_uid in SSPL0001 format
-const getNextTrialUid = async (): Promise<string> => {
-    const { data, error } = await supabase
-        .from('player_workflow')
-        .select('trial_uid')
-        .not('trial_uid', 'is', null)
-        .order('trial_uid', { ascending: false })
-        .limit(100);
-    
-    if (error || !data || data.length === 0) return 'SSPL0001';
-    
-    // Find the max numeric value from all trial_uids
-    let maxNum = 0;
-    for (const row of data) {
-        const match = row.trial_uid?.match(/SSPL(\d+)/);
-        if (match) {
-            const num = parseInt(match[1], 10);
-            if (num > maxNum) maxNum = num;
-        }
-    }
-    
-    return 'SSPL' + String(maxNum + 1).padStart(4, '0');
-};
-
-// Helper: Generate multiple sequential trial_uids
-const getNextTrialUids = async (count: number): Promise<string[]> => {
-    const { data, error } = await supabase
-        .from('player_workflow')
-        .select('trial_uid')
-        .not('trial_uid', 'is', null)
-        .order('trial_uid', { ascending: false })
-        .limit(100);
-    
-    let maxNum = 0;
-    if (!error && data) {
-        for (const row of data) {
-            const match = row.trial_uid?.match(/SSPL(\d+)/);
-            if (match) {
-                const num = parseInt(match[1], 10);
-                if (num > maxNum) maxNum = num;
-            }
-        }
-    }
-    
-    return Array.from({ length: count }, (_, i) => 'SSPL' + String(maxNum + 1 + i).padStart(4, '0'));
-};
-
 // Types for API responses
 interface ApiResponse<T> {
     success: boolean;
@@ -562,8 +515,7 @@ export const movePlayerToTrials = async (
                 data: { workflowId: updateData?.[0]?.workflow_id, message: 'Player moved to trials list successfully' }
             };
         } else {
-            // Create new workflow entry with auto-generated trial_uid
-            const nextUid = await getNextTrialUid();
+            // Create new workflow entry
             const { data: insertData, error: insertError } = await supabase
                 .from('player_workflow')
                 .insert({
@@ -577,7 +529,6 @@ export const movePlayerToTrials = async (
                     pincode: playerData.pincode,
                     payment_status: playerData.payment_status,
                     payment_amount: playerData.payment_amount,
-                    trial_uid: nextUid,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 })
@@ -897,10 +848,9 @@ export const moveCertificatePlayersToTrials = async (
 
         let createdWorkflows: any[] = [];
 
-        // Insert missing workflows with auto-generated trial_uids
+        // Insert missing workflows
         if (missingWorkflowRegIds.length > 0) {
-            const newUids = await getNextTrialUids(missingWorkflowRegIds.length);
-            const newWorkflows = missingWorkflowRegIds.map((regId, idx) => {
+            const newWorkflows = missingWorkflowRegIds.map(regId => {
                 const phone = regPhoneMap.get(regId);
                 const p = playerMap.get(phone || '');
                 return {
@@ -913,7 +863,6 @@ export const moveCertificatePlayersToTrials = async (
                     city: '',
                     payment_status: 'completed',
                     payment_amount: 0,
-                    trial_uid: newUids[idx],
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 };

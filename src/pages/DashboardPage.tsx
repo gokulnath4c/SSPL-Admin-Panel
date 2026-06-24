@@ -38,10 +38,16 @@ export default function DashboardPage() {
     let playersList: any[] = [];
     try {
         if (type === 'in') {
-            const { data } = await supabase.from('trial_view')
-                .select('name, mobile, email, state, city, proficiency, final_status')
-                .eq('final_status', 'SELECTED');
-            playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: p.proficiency || '-', status: 'In' })) || [];
+            const [{ data: selectedData }, { data: notCalledData }] = await Promise.all([
+                supabase.from('trial_view').select('name, mobile, email, state, city, proficiency, final_status').eq('final_status', 'SELECTED'),
+                supabase.from('trial_view').select('name, mobile, email, state, city, proficiency').neq('l1_called', true)
+            ]);
+            const selectedList = selectedData?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: p.proficiency || '-', status: 'In (Selected)' })) || [];
+            const notCalledList = notCalledData?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: p.proficiency || '-', status: 'In (Not Called)' })) || [];
+            playersList = [...selectedList, ...notCalledList];
+        } else if (type === 'not_called_for') {
+            const { data } = await supabase.from('trial_view').select('name, mobile, email, state, city, proficiency').neq('l1_called', true);
+            playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: p.proficiency || '-', status: 'Not Called For' })) || [];
         } else if (type === 'out') {
             const { data } = await supabase.from('trial_view')
                 .select('name, mobile, email, state, city, proficiency, final_status')
@@ -161,6 +167,11 @@ export default function DashboardPage() {
                     .eq('l2_result', 'SELECTED')
                     .eq('l3_attendance', 'ABSENT');
                 playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: p.proficiency || '-', status: 'Selected L1 & L2, Absent L3' })) || [];
+            } else if (type === 'in_split_4') {
+                const { data } = await supabase.from('trial_view')
+                    .select('name, mobile, email, state, city, proficiency')
+                    .neq('l1_called', true);
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: p.proficiency || '-', status: 'Not Called For' })) || [];
             } else if (type === 'level1_selected_level2_absent') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
@@ -172,25 +183,25 @@ export default function DashboardPage() {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
                     .ilike('proficiency', '%BATSMAN%')
-                    .eq('final_status', 'SELECTED');
+                    .eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED');
                 playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: p.proficiency || '-', status: 'Batsman' })) || [];
             } else if (type === 'proficiency_1') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
                     .ilike('proficiency', '%BOWLER%')
-                    .eq('final_status', 'SELECTED');
+                    .eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED');
                 playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: p.proficiency || '-', status: 'Bowler' })) || [];
             } else if (type === 'proficiency_2') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
                     .or('proficiency.ilike.%ALL ROUNDER%,proficiency.ilike.%AR%')
-                    .eq('final_status', 'SELECTED');
+                    .eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED');
                 playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: p.proficiency || '-', status: 'All Rounder' })) || [];
             } else if (type === 'proficiency_3') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
                     .or('proficiency.is.null,proficiency.eq.,proficiency.eq.NA,proficiency.ilike.N/A%')
-                    .eq('final_status', 'SELECTED');
+                    .eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED');
                 playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: p.proficiency || '-', status: 'Not Specified' })) || [];
             }
     } catch (e) {
@@ -312,6 +323,20 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Not Called For */}
+        <div 
+          onClick={() => handleCardClick('Not Called For', 'not_called_for')}
+          className="bg-linear-to-br from-red-50 to-red-100 rounded-lg shadow p-6 border border-red-200 cursor-pointer hover:shadow-md transition-shadow"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-red-700 text-sm font-medium">Not Called For</p>
+              <p className="text-4xl font-bold text-red-900 mt-2">{stats?.notCalledForCount || 0}</p>
+            </div>
+            <div className="text-4xl">📞</div>
+          </div>
+        </div>
+
       </div>
 
       {/* Selection & Attendance Metrics */}
@@ -380,38 +405,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Proficiency Breakdown */}
-      {stats && stats.proficiencySplit && stats.proficiencySplit.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <span>⚔️</span> Fully Selected Players Proficiency Breakdown
-          </h2>
-          <div className="bg-white rounded-lg shadow border border-indigo-100 overflow-hidden">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 md:divide-x border-gray-200">
-              {stats.proficiencySplit.map((item, idx) => (
-                <div 
-                  key={idx} 
-                  className="p-6 hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => handleCardClick(item.label, `proficiency_${idx}`)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{item.label}</p>
-                      <p className="text-xs text-gray-500 mt-1">{item.description}</p>
-                    </div>
-                    <div className="text-2xl ml-4">{item.icon}</div>
-                  </div>
-                  <div className="mt-4">
-                    <span className="text-3xl font-bold text-indigo-600">{item.count}</span>
-                    <span className="text-sm font-medium text-gray-500 ml-2">players</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Selection Funnel & Finalists */}
       <div className="space-y-4">
         <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -460,21 +453,40 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Overall Final Selected */}
-          <div 
-            onClick={() => handleCardClick('Overall Final Selected', 'final_selected')}
-            className="bg-linear-to-br from-amber-50 to-amber-100 rounded-lg shadow p-6 border border-amber-200 cursor-pointer hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-amber-700 text-sm font-medium">Overall Final Selected</p>
-                <p className="text-4xl font-bold text-amber-900 mt-2">{stats?.selectedCount || 0}</p>
-              </div>
-              <div className="text-5xl">🏆</div>
+        </div>
+      </div>
+
+      {/* Proficiency Breakdown */}
+      {stats && stats.proficiencySplit && stats.proficiencySplit.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <span>⚔️</span> Fully Selected Players Proficiency Breakdown
+          </h2>
+          <div className="bg-white rounded-lg shadow border border-indigo-100 overflow-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 md:divide-x border-gray-200">
+              {stats.proficiencySplit.map((item, idx) => (
+                <div 
+                  key={idx} 
+                  className="p-6 hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={() => handleCardClick(item.label, `proficiency_${idx}`)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{item.label}</p>
+                      <p className="text-xs text-gray-500 mt-1">{item.description}</p>
+                    </div>
+                    <div className="text-2xl ml-4">{item.icon}</div>
+                  </div>
+                  <div className="mt-4">
+                    <span className="text-3xl font-bold text-indigo-600">{item.count}</span>
+                    <span className="text-sm font-medium text-gray-500 ml-2">players</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Excel Master Data Sheets */}
       {excelSheets.length > 0 && (

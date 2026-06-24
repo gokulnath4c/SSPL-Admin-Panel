@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import MainLayout from '@layout/MainLayout'
-import AdminLayout from '@layout/AdminLayout'
+import MainLayout from './layout/MainLayout'
+import AdminLayout from './layout/AdminLayout'
 import HomePage from '@pages/HomePage'
 import LoginPage from '@pages/LoginPage'
 import SignupPage from '@pages/SignupPage'
@@ -32,8 +32,10 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
 
-      {/* Redirect Root to Dashboard (which redirects to Login if unauthenticated) */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      {/* Public Home Page */}
+      <Route path="/" element={<MainLayout />}>
+        <Route index element={<HomePage />} />
+      </Route>
 
       {/* Protected Admin Routes */}
       <Route

@@ -33,9 +33,6 @@ export interface PlayerRegistration {
   payment_amount?: number
   payment_date?: string
   notes?: string
-  registration_type?: 'individual' | 'team'
-  team?: string
-  team_members?: any
 }
 
 export interface TournamentOrganizer {

@@ -102,10 +102,6 @@ export default function PlayerDetailsModal({ isOpen, onClose, registration }: Pl
                                         <p className="text-gray-900 font-medium">{registration.player_name}</p>
                                     </div>
                                     <div>
-                                        <p className="text-sm text-gray-600">Registration Type</p>
-                                        <p className="text-gray-900 font-medium capitalize">{registration.registration_type || 'individual'}</p>
-                                    </div>
-                                    <div>
                                         <p className="text-sm text-gray-600">Email Address</p>
                                         <p className="text-gray-900 font-medium">{registration.player_email}</p>
                                     </div>
@@ -131,28 +127,6 @@ export default function PlayerDetailsModal({ isOpen, onClose, registration }: Pl
                                     </div>
                                 </div>
                             </div>
-
-                            {registration.registration_type === 'team' && (
-                                <div className="mt-4 pt-4 border-t border-gray-100">
-                                    <h5 className="text-md font-semibold text-gray-800 mb-2">Team Details</h5>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <p className="text-sm text-gray-600">Team Name</p>
-                                            <p className="text-gray-900 font-medium">{registration.team || 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-gray-600">Team Members</p>
-                                            <p className="text-gray-900 font-medium whitespace-pre-wrap">
-                                                {typeof registration.team_members === 'string' 
-                                                    ? registration.team_members 
-                                                    : registration.team_members 
-                                                        ? JSON.stringify(registration.team_members, null, 2) 
-                                                        : 'No members listed'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
                         {/* Payment Information Section */}

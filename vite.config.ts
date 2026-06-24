@@ -6,17 +6,17 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@components': path.resolve(__dirname, './src/components'),
-      '@pages': path.resolve(__dirname, './src/pages'),
-      '@hooks': path.resolve(__dirname, './src/hooks'),
-      '@utils': path.resolve(__dirname, './src/utils'),
-      '@types': path.resolve(__dirname, './src/types'),
-      '@layout': path.resolve(__dirname, './src/layout'),
-      '@lib': path.resolve(__dirname, './src/lib'),
-      '@api': path.resolve(__dirname, './src/api'),
-    },
+    alias: [
+      { find: '@components', replacement: path.resolve(__dirname, './src/components') },
+      { find: '@pages', replacement: path.resolve(__dirname, './src/pages') },
+      { find: '@hooks', replacement: path.resolve(__dirname, './src/hooks') },
+      { find: '@utils', replacement: path.resolve(__dirname, './src/utils') },
+      { find: '@types', replacement: path.resolve(__dirname, './src/types') },
+      { find: '@layout', replacement: path.resolve(__dirname, './src/layout') },
+      { find: '@lib', replacement: path.resolve(__dirname, './src/lib') },
+      { find: '@api', replacement: path.resolve(__dirname, './src/api') },
+      { find: '@', replacement: path.resolve(__dirname, './src') }
+    ],
   },
   server: {
     port: 3000,

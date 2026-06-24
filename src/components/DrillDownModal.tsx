@@ -7,9 +7,10 @@ interface Player {
     email?: string;
     city?: string;
     state?: string;
-    proficiency?: string;
     status?: string;
     payment_status?: string;
+    proficiency?: string;
+    date?: string;
 }
 
 interface DrillDownModalProps {
@@ -34,7 +35,7 @@ export default function DrillDownModal({ isOpen, onClose, title, players, loadin
         <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="fixed inset-0 bg-black/50 transition-opacity" onClick={onClose}></div>
             <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
-                <div className="bg-white rounded-xl shadow-2xl w-full max-w-7xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in duration-200">
                     <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
                         <h3 className="text-xl font-bold">{title} - Players List</h3>
                         <div className="flex items-center gap-3">
@@ -59,15 +60,15 @@ export default function DrillDownModal({ isOpen, onClose, title, players, loadin
                                 <p className="mt-4 text-slate-600 font-medium">Fetching players list...</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto max-h-[80vh]">
+                            <div className="overflow-x-auto max-h-[60vh]">
                                 <table className="w-full text-sm text-left border-collapse">
                                     <thead className="bg-slate-50 sticky top-0 border-b">
                                         <tr>
                                             <th className="px-4 py-3 font-semibold text-slate-700">Name</th>
-                                            <th className="px-4 py-3 font-semibold text-slate-700">Phone</th>
-                                            <th className="px-4 py-3 font-semibold text-slate-700">Email</th>
+                                            <th className="px-4 py-3 font-semibold text-slate-700">Phone/Email</th>
                                             <th className="px-4 py-3 font-semibold text-slate-700">City/State</th>
                                             <th className="px-4 py-3 font-semibold text-slate-700">Proficiency</th>
+                                            <th className="px-4 py-3 font-semibold text-slate-700">Date</th>
                                             <th className="px-4 py-3 font-semibold text-slate-700 text-right">Count: {players.length}</th>
                                         </tr>
                                     </thead>
@@ -80,12 +81,19 @@ export default function DrillDownModal({ isOpen, onClose, title, players, loadin
                                             players.map((p, i) => (
                                                 <tr key={i} className="hover:bg-slate-50 transition-colors">
                                                     <td className="px-4 py-3 font-medium text-slate-900">{p.name}</td>
-                                                    <td className="px-4 py-3 text-slate-600 font-mono text-xs">{p.phone}</td>
-                                                    <td className="px-4 py-3 text-slate-600">{p.email || '-'}</td>
+                                                    <td className="px-4 py-3 text-slate-600 font-mono text-xs">
+                                                        {p.phone}<br/>
+                                                        <span className="text-[10px] text-slate-400 font-sans">{p.email || '-'}</span>
+                                                    </td>
                                                     <td className="px-4 py-3 text-slate-600 text-xs">
                                                         {p.city}{p.state ? `, ${p.state}` : ''}
                                                     </td>
-                                                    <td className="px-4 py-3 text-slate-600 text-xs font-medium">{p.proficiency || '-'}</td>
+                                                    <td className="px-4 py-3 text-slate-600 text-xs font-semibold">
+                                                        {p.proficiency || '-'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-slate-600 text-xs whitespace-nowrap">
+                                                        {p.date ? new Date(p.date).toLocaleDateString() : '-'}
+                                                    </td>
                                                     <td className="px-4 py-3 text-right">
                                                         {p.payment_status && (
                                                             <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${

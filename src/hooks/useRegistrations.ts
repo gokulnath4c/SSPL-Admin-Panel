@@ -98,17 +98,42 @@ export function useRegistrations(): UseRegistrationsReturn {
     try {
       // NOTE: Temporarily bypassing RPC to ensure we get all fields (City, Pincode) which might be missing in the RPC response
 
-      // Try fetching from the improved view first (DISABLED to get team registration details directly from table)
-      /*
-      const { data: viewData, error: viewError } = await supabase
-        .from('v_admin_player_registrations')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1000)
+      // Try fetching from the improved view first
+      // Try fetching from the improved view first
+      let allViewData: any[] = []
+      let viewHasMore = true
+      let viewPage = 0
+      const viewPageSize = 1000
 
-      if (!viewError && viewData && viewData.length > 0) {
+      while (viewHasMore) {
+        const from = viewPage * viewPageSize
+        const to = from + viewPageSize - 1
+
+        const { data: viewData, error: viewError } = await supabase
+          .from('v_admin_player_registrations')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, to)
+
+        if (viewError) {
+          console.warn('View query failed:', viewError.message)
+          break
+        }
+
+        if (viewData && viewData.length > 0) {
+          allViewData = [...allViewData, ...viewData]
+          viewPage++
+          if (viewData.length < viewPageSize) {
+            viewHasMore = false
+          }
+        } else {
+          viewHasMore = false
+        }
+      }
+
+      if (allViewData.length > 0) {
         // Map created_at to registration_date for UI compatibility
-        const mappedViewData = viewData.map((reg: any) => ({
+        const mappedViewData = allViewData.map((reg: any) => ({
           ...reg,
           // Ensure registration_date is always a string or null, prioritizing created_at if view renamed it
           registration_date: reg.created_at || reg.registration_date || new Date().toISOString()
@@ -117,12 +142,8 @@ export function useRegistrations(): UseRegistrationsReturn {
         return
       }
 
-      if (viewError) {
-        console.warn('View query failed, falling back to direct table query:', viewError.message)
-      }
-      */
 
-
+      // Fallback: Try direct query from player_registrations table
       const { data: directData, error: directError } = await supabase
         .from('player_registrations')
         .select(`
@@ -137,10 +158,7 @@ export function useRegistrations(): UseRegistrationsReturn {
             position,
             payment_status,
             payment_amount,
-            status,
-            registration_type,
-            team,
-            team_members
+            status
           `)
         .order('created_at', { ascending: false })
         .range(0, 999) // Initial request
@@ -171,10 +189,7 @@ export function useRegistrations(): UseRegistrationsReturn {
               position,
               payment_status,
               payment_amount,
-              status,
-              registration_type,
-              team,
-              team_members
+              status
             `)
             .order('created_at', { ascending: false })
             .range(from, to)
@@ -208,9 +223,6 @@ export function useRegistrations(): UseRegistrationsReturn {
           payment_status: reg.payment_status || 'pending',
           payment_amount: reg.payment_amount || 0,
           payment_date: reg.payment_date,
-          registration_type: reg.registration_type || 'individual',
-          team: reg.team,
-          team_members: reg.team_members,
           notes: `Position: ${reg.position}`,
         }))
         setRegistrations(mappedData)
