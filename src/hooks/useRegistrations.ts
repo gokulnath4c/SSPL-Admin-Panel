@@ -112,7 +112,7 @@ export function useRegistrations(): UseRegistrationsReturn {
         const { data: viewData, error: viewError } = await supabase
           .from('v_admin_player_registrations')
           .select('*')
-          .order('registration_date', { ascending: false })
+          .order('created_at', { ascending: false })
           .range(from, to)
 
         if (viewError) {
