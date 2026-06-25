@@ -95,6 +95,37 @@ class GA4DataFetchService {
                     console.warn('Network error detected. This might be due to AdBlocker or CORS issues with the Edge Function.');
                 }
 
+                // Fallback: Query ga4_analytics directly from database if Edge function fails
+                try {
+                    const { data: dbData, error: dbError } = await supabase
+                        .from('ga4_analytics')
+                        .select('*')
+                        .gte('report_date', startDate)
+                        .lte('report_date', endDate);
+                    
+                    if (!dbError && dbData && dbData.length > 0) {
+                        const mappedData: GA4UTMReport[] = dbData.map(row => ({
+                            utm_id: 'N/A',
+                            utm_source: row.utm_source || '(not set)',
+                            utm_medium: row.utm_medium || '(not set)',
+                            utm_campaign: row.utm_campaign || '(not set)',
+                            utm_content: row.utm_content || '(not set)',
+                            date: row.report_date ? row.report_date.replace(/-/g, '') : '',
+                            users: row.users || 0,
+                            sessions: row.sessions || 0,
+                            conversions: row.conversions || 0,
+                            revenue: row.revenue || 0,
+                            newUsers: row.new_users || 0,
+                            bounceRate: row.bounce_rate || 0,
+                            avgSessionDuration: row.avg_session_duration || 0,
+                            pageViews: row.page_views || 0
+                        }));
+                        return { data: mappedData, totalRows: mappedData.length, fetchedRows: mappedData.length, dateRange: { startDate, endDate } };
+                    }
+                } catch (fallbackError) {
+                    console.error('Fallback query to ga4_analytics failed:', fallbackError);
+                }
+
                 return { data: [], totalRows: 0, fetchedRows: 0, dateRange: { startDate, endDate } };
             }
 

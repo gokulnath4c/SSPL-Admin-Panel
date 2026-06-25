@@ -80,6 +80,7 @@ export default function CoimbatoreCampaignWidget() {
         // 1. Fetch GA4 data for this campaign (if API is working)
         let ga4Scans = 0;
         let ga4Visits = 0;
+        let ga4Conversions = 0;
         try {
           const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
           const endDate = new Date().toISOString().split('T')[0];
@@ -92,6 +93,7 @@ export default function CoimbatoreCampaignWidget() {
           
           ga4Scans = campaignData.reduce((sum: number, item: any) => sum + (item.sessions || 0), 0);
           ga4Visits = campaignData.reduce((sum: number, item: any) => sum + (item.users || 0), 0);
+          ga4Conversions = campaignData.reduce((sum: number, item: any) => sum + (item.conversions || 0), 0);
         } catch (e) {
           console.error("GA4 fetch error:", e);
         }
@@ -135,7 +137,7 @@ export default function CoimbatoreCampaignWidget() {
             // Fall back to registration attempts if GA4 returns 0 or fails (e.g. edge function 500 error).
             scans: ga4Scans > 0 ? ga4Scans : totalDBRegistrations,
             visits: ga4Visits > 0 ? ga4Visits : totalDBRegistrations,
-            successfulRegistrations: successfulDBRegistrations,
+            successfulRegistrations: ga4Conversions > 0 ? ga4Conversions : successfulDBRegistrations,
             failedRegistrations: failedDBRegistrations
           });
           setLoading(false);
