@@ -19,9 +19,10 @@ interface DrillDownModalProps {
     title: string;
     players: Player[];
     loading: boolean;
+    infoMessage?: string;
 }
 
-export default function DrillDownModal({ isOpen, onClose, title, players, loading }: DrillDownModalProps) {
+export default function DrillDownModal({ isOpen, onClose, title, players, loading, infoMessage }: DrillDownModalProps) {
     if (!isOpen) return null;
 
     const handleDownloadExcel = () => {
@@ -54,6 +55,11 @@ export default function DrillDownModal({ isOpen, onClose, title, players, loadin
                     </div>
 
                     <div className="p-6">
+                        {infoMessage && (
+                            <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 text-blue-700 text-sm rounded">
+                                {infoMessage}
+                            </div>
+                        )}
                         {loading ? (
                             <div className="flex flex-col items-center justify-center h-64">
                                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-slate-900"></div>

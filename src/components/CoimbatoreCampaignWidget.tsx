@@ -20,15 +20,18 @@ export default function CoimbatoreCampaignWidget() {
     isOpen: boolean;
     title: string;
     players: any[];
+    infoMessage?: string;
   }>({
     isOpen: false,
     title: '',
-    players: []
+    players: [],
+    infoMessage: undefined
   });
 
-  const handleCardClick = (type: 'all' | 'successful' | 'failed') => {
+  const handleCardClick = (type: 'all' | 'successful' | 'failed' | 'scans' | 'visits') => {
     let filtered = rawRegistrations;
     let title = 'All Registrations (Coimbatore Campaign)';
+    let infoMessage = undefined;
     
     if (type === 'successful') {
       filtered = rawRegistrations.filter((r: any) => 
@@ -46,6 +49,12 @@ export default function CoimbatoreCampaignWidget() {
         r.payment_status === 'completed'
       ));
       title = 'Failed / Pending Registrations (Coimbatore Campaign)';
+    } else if (type === 'scans') {
+      title = 'Registrations from Scans (Coimbatore Campaign)';
+      infoMessage = 'Note: The card shows total anonymous QR scans from Google Analytics. The table below only lists users who actually completed the registration form.';
+    } else if (type === 'visits') {
+      title = 'Registrations from Website Visits (Coimbatore Campaign)';
+      infoMessage = 'Note: The card shows total anonymous website visits from Google Analytics. The table below only lists users who actually completed the registration form.';
     }
     
     // Map to DrillDownModal expected format
@@ -63,7 +72,8 @@ export default function CoimbatoreCampaignWidget() {
     setDrillDown({
       isOpen: true,
       title,
-      players: playersList
+      players: playersList,
+      infoMessage
     });
   };
 
@@ -176,7 +186,7 @@ export default function CoimbatoreCampaignWidget() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div 
-            onClick={() => handleCardClick('all')}
+            onClick={() => handleCardClick('scans')}
             className="bg-white rounded-lg shadow-sm p-4 border border-purple-50 cursor-pointer hover:shadow-md transition-shadow"
           >
             <div className="flex items-center justify-between">
@@ -190,7 +200,7 @@ export default function CoimbatoreCampaignWidget() {
           </div>
           
           <div 
-            onClick={() => handleCardClick('all')}
+            onClick={() => handleCardClick('visits')}
             className="bg-white rounded-lg shadow-sm p-4 border border-purple-50 cursor-pointer hover:shadow-md transition-shadow"
           >
             <div className="flex items-center justify-between">
@@ -238,6 +248,7 @@ export default function CoimbatoreCampaignWidget() {
         onClose={() => setDrillDown(prev => ({ ...prev, isOpen: false }))}
         title={drillDown.title}
         players={drillDown.players}
+        infoMessage={drillDown.infoMessage}
         loading={false}
       />
     </div>
