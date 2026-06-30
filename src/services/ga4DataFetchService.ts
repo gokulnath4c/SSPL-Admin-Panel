@@ -78,7 +78,7 @@ class GA4DataFetchService {
     /**
      * Fetch UTM campaign performance from GA4
      */
-    async getUTMCampaignReport(startDate: string = '30daysAgo', endDate: string = 'today'): Promise<GA4ReportResponse> {
+    async getUTMCampaignReport(startDate: string = '30daysAgo', endDate: string = 'today', dbFilter?: string): Promise<GA4ReportResponse> {
         try {
             const { data, error } = await supabase.functions.invoke('ga4-utm-report', {
                 body: {
@@ -88,7 +88,7 @@ class GA4DataFetchService {
             });
 
             if (error) {
-                console.error('Error fetching GA4 UTM report:', error);
+                console.warn('GA4 Edge Function unavailable (likely missing API keys or not deployed). Falling back to database...', error.message || error);
 
                 // Check if it's a CORS or network error which might happen with AdBlockers
                 if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('Network request failed'))) {
@@ -97,14 +97,21 @@ class GA4DataFetchService {
 
                 // Fallback: Query ga4_analytics directly from database if Edge function fails
                 try {
-                    const { data: dbData, error: dbError } = await supabase
+                    let query = supabase
                         .from('ga4_analytics')
                         .select('*')
                         .gte('report_date', startDate)
-                        .lte('report_date', endDate);
+                        .lte('report_date', endDate)
+                        .limit(1000);
+                        
+                    if (dbFilter) {
+                        query = query.or(dbFilter);
+                    }
+                    
+                    const { data: dbData, error: dbError } = await query;
                     
                     if (!dbError && dbData && dbData.length > 0) {
-                        const mappedData: GA4UTMReport[] = dbData.map(row => ({
+                        const mappedData: GA4UTMReport[] = dbData.map((row: any) => ({
                             utm_id: 'N/A',
                             utm_source: row.utm_source || '(not set)',
                             utm_medium: row.utm_medium || '(not set)',

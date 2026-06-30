@@ -28,9 +28,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetch('/data/sheets/sheets_meta.json')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
       .then(data => setExcelSheets(data))
-      .catch(err => console.error('Failed to load excel sheets metadata', err));
+      .catch(err => console.warn('Excel sheets metadata not found or failed to load', err));
   }, []);
 
   const handleCardClick = async (title: string, type: string) => {
