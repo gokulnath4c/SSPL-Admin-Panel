@@ -248,8 +248,9 @@ export function useDashboard(): UseDashboardReturn {
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_attendance', 'ABSENT'), // count3: L3 Absent
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.ilike.%BATSMAN%,proficiency.ilike.%BATTING%').eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.ilike.%BOWLER%,proficiency.ilike.%BOWLING%').eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED'),
-        supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.ilike.%ALL ROUNDER%,proficiency.ilike.%AR%,proficiency.ilike.%ALL-ROUNDER%').eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED'),
-        supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.is.null,proficiency.eq.,proficiency.eq.NA,proficiency.ilike.N/A%').eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED'),
+        supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.ilike.%ALL ROUNDER%,proficiency.ilike.%AR%,proficiency.ilike.%ALL-ROUNDER%,proficiency.is.null,proficiency.eq.,proficiency.eq.NA,proficiency.ilike.N/A%').eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED'),
+        // No longer tracking not specified separately, but keeping placeholder to avoid changing array index mappings
+        supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('id', 'dummy-never-matches'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('l1_attendance.eq.ABSENT,l2_attendance.eq.ABSENT,l3_attendance.eq.ABSENT'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_result', 'SELECTED'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l2_result', 'SELECTED'),
@@ -302,8 +303,7 @@ export function useDashboard(): UseDashboardReturn {
         proficiencySplit: [
           { label: 'Batsman', count: batsmanCount || 0, icon: '🏏', description: 'Players with Batsman proficiency' },
           { label: 'Bowler', count: bowlerCount || 0, icon: '⚾', description: 'Players with Bowler proficiency' },
-          { label: 'All Rounder', count: arCount || 0, icon: '⭐', description: 'Players with All Rounder proficiency' },
-          { label: 'Not Specified', count: notSpecifiedCount || 0, icon: '❓', description: 'Players with no proficiency listed' }
+          { label: 'All Rounder', count: arCount || 0, icon: '⭐', description: 'Players with All Rounder proficiency (including not specified)' }
         ],
       })
     } catch (err) {
