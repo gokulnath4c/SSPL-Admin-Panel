@@ -328,6 +328,13 @@ export function useDashboard(): UseDashboardReturn {
 
   useEffect(() => {
     fetchStats()
+
+    // Auto-refresh dashboard data every 60 seconds
+    const intervalId = setInterval(() => {
+      fetchStats()
+    }, 60000)
+
+    return () => clearInterval(intervalId)
   }, [])
 
   const refetch = async () => {
