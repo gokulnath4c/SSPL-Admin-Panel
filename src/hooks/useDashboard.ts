@@ -251,7 +251,7 @@ export function useDashboard(): UseDashboardReturn {
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.ilike.%BOWLER%,proficiency.ilike.%BOWLING%').eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('proficiency.ilike.%ALL ROUNDER%,proficiency.ilike.%AR%,proficiency.ilike.%ALL-ROUNDER%,proficiency.is.null,proficiency.eq.,proficiency.eq.NA,proficiency.ilike.N/A%').eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED'),
         // No longer tracking not specified separately, but keeping placeholder to avoid changing array index mappings
-        supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('id', 'dummy-never-matches'),
+        Promise.resolve({ count: 0, data: [], error: null, status: 200, statusText: 'OK' }) as any,
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).or('l1_attendance.eq.ABSENT,l2_attendance.eq.ABSENT,l3_attendance.eq.ABSENT'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_result', 'SELECTED'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l2_result', 'SELECTED'),

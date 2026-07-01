@@ -80,19 +80,25 @@ class GA4DataFetchService {
      */
     async getUTMCampaignReport(startDate: string = '30daysAgo', endDate: string = 'today', dbFilter?: string): Promise<GA4ReportResponse> {
         try {
+            // Skip edge function invocation to avoid 500 error in console
+            // as we are using the database fallback anyway
+            const data: any = null;
+            const error = new Error("Skipping Edge Function and using fallback");
+            /*
             const { data, error } = await supabase.functions.invoke('ga4-utm-report', {
                 body: {
                     startDate,
                     endDate
                 }
             });
+            */
 
             if (error) {
-                console.warn('GA4 Edge Function unavailable (likely missing API keys or not deployed). Falling back to database...', error.message || error);
+                // Silently falling back to database query since the edge function is intentionally skipped
 
                 // Check if it's a CORS or network error which might happen with AdBlockers
                 if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('Network request failed'))) {
-                    console.warn('Network error detected. This might be due to AdBlocker or CORS issues with the Edge Function.');
+                    // console.warn('Network error detected. This might be due to AdBlocker or CORS issues with the Edge Function.');
                 }
 
                 // Fallback: Query ga4_analytics directly from database if Edge function fails

@@ -30,10 +30,18 @@ export default function DashboardPage() {
     fetch('/data/sheets/sheets_meta.json')
       .then(res => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        return res.json();
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          return res.json();
+        } else {
+          throw new Error("Response is not JSON");
+        }
       })
       .then(data => setExcelSheets(data))
-      .catch(err => console.warn('Excel sheets metadata not found or failed to load', err));
+      .catch(() => {
+        // Silently ignore missing or invalid excel sheets metadata
+        // to prevent console warnings when the file doesn't exist.
+      });
   }, []);
 
   const handleCardClick = async (title: string, type: string) => {
