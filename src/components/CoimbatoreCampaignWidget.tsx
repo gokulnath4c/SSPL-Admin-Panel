@@ -14,7 +14,8 @@ export default function CoimbatoreCampaignWidget() {
   
   // Store raw database records for the drill-down
   const [rawRegistrations, setRawRegistrations] = useState<any[]>([]);
-  
+  const [rawLeads, setRawLeads] = useState<any[]>([]);
+  const [ga4History, setGa4History] = useState<any[]>([]);
   // Drill-down modal state
   const [drillDown, setDrillDown] = useState<{
     isOpen: boolean;
@@ -32,7 +33,8 @@ export default function CoimbatoreCampaignWidget() {
     let filtered = rawRegistrations;
     let title = 'All Registrations (Coimbatore Campaign)';
     let infoMessage = undefined;
-    
+    let playersList: any[] = [];
+
     if (type === 'successful') {
       filtered = rawRegistrations.filter((r: any) => 
         r.payment_status === 'captured' || 
@@ -41,6 +43,16 @@ export default function CoimbatoreCampaignWidget() {
         r.payment_status === 'completed'
       );
       title = 'Successful Registrations (Coimbatore Campaign)';
+      playersList = filtered.map((p: any) => ({
+        name: p.full_name,
+        phone: p.phone,
+        email: p.email,
+        city: p.city,
+        state: p.state,
+        status: p.status,
+        payment_status: p.payment_status,
+        date: p.created_at ? new Date(p.created_at).toLocaleDateString() : undefined
+      }));
     } else if (type === 'failed') {
       filtered = rawRegistrations.filter((r: any) => !(
         r.payment_status === 'captured' || 
@@ -49,25 +61,71 @@ export default function CoimbatoreCampaignWidget() {
         r.payment_status === 'completed'
       ));
       title = 'Failed / Pending Registrations (Coimbatore Campaign)';
-    } else if (type === 'scans') {
-      title = 'Registrations from Scans (Coimbatore Campaign)';
-      infoMessage = 'Note: The card shows total anonymous QR scans from Google Analytics. The table below only lists users who actually completed the registration form.';
-    } else if (type === 'visits') {
-      title = 'Registrations from Website Visits (Coimbatore Campaign)';
-      infoMessage = 'Note: The card shows total anonymous website visits from Google Analytics. The table below only lists users who actually completed the registration form.';
+      playersList = filtered.map((p: any) => ({
+        name: p.full_name,
+        phone: p.phone,
+        email: p.email,
+        city: p.city,
+        state: p.state,
+        status: p.status,
+        payment_status: p.payment_status,
+        date: p.created_at ? new Date(p.created_at).toLocaleDateString() : undefined
+      }));
+    } else if (type === 'scans' || type === 'visits') {
+      // 1. Show raw visitor leads if we have them
+      if (rawLeads.length > 0) {
+        title = type === 'visits' ? 'Website Visits (Real-time)' : 'QR Scans (Real-time)';
+        infoMessage = "Displaying real-time visitor captures including anonymous device data.";
+        playersList = rawLeads.map((l: any) => ({
+          name: l.name || 'Anonymous Visitor',
+          phone: l.phone || '-',
+          email: l.email || '-',
+          city: l.utm_source || '-',
+          state: l.utm_medium || '-',
+          status: l.utm_campaign || 'Lead',
+          payment_status: 'N/A',
+          date: l.created_at ? new Date(l.created_at).toLocaleDateString() : undefined
+        }));
+      } 
+      // 2. Show GA4 historical aggregate data if raw visitor leads are empty
+      else if (ga4History.length > 0) {
+        title = type === 'visits' ? 'Website Visits (Historical Aggregate)' : 'QR Scans (Historical Aggregate)';
+        infoMessage = "Real-time tracking was recently added. Displaying historical aggregated data from Google Analytics.";
+        
+        const expandedList: any[] = [];
+        ga4History.forEach((row: any) => {
+          const count = type === 'visits' ? (row.users || 0) : (row.sessions || 0);
+          for (let i = 0; i < count; i++) {
+            expandedList.push({
+              name: row.utm_source || 'N/A',
+              phone: '-',
+              email: '-',
+              city: row.utm_medium || '-',
+              state: '-',
+              status: type === 'visits' ? `Website Visit` : `QR Scan`,
+              payment_status: 'N/A',
+              date: row.date ? `${row.date.substring(0,4)}-${row.date.substring(4,6)}-${row.date.substring(6,8)}` : 'N/A'
+            });
+          }
+        });
+        playersList = expandedList;
+      }
+      // 3. Fallback to registrations
+      else {
+        title = 'Registrations (Fallback)';
+        infoMessage = 'No analytics data available. Displaying registered players.';
+        playersList = rawRegistrations.map((p: any) => ({
+          name: p.full_name,
+          phone: p.phone,
+          email: p.email,
+          city: p.city,
+          state: p.state,
+          status: p.status,
+          payment_status: p.payment_status,
+          date: p.created_at ? new Date(p.created_at).toLocaleDateString() : undefined
+        }));
+      }
     }
-    
-    // Map to DrillDownModal expected format
-    const playersList = filtered.map(p => ({
-      name: p.full_name,
-      phone: p.phone,
-      email: p.email,
-      city: p.city,
-      state: p.state,
-      status: p.status,
-      payment_status: p.payment_status,
-      date: p.created_at ? new Date(p.created_at).toLocaleDateString() : undefined
-    }));
     
     setDrillDown({
       isOpen: true,
@@ -87,14 +145,14 @@ export default function CoimbatoreCampaignWidget() {
           setLoading(true);
         }
 
-        // 1. Fetch GA4 data for this campaign (if API is working)
         let ga4Scans = 0;
         let ga4Visits = 0;
         let ga4Conversions = 0;
         try {
-          const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          const startDate = '2025-01-01';
           const endDate = new Date().toISOString().split('T')[0];
-          const ga4Response = await ga4DataFetchService.getUTMCampaignReport(startDate, endDate);
+          const dbFilter = 'utm_source.ilike.%karthikeyan%,utm_campaign.ilike.%coimbatore%';
+          const ga4Response = await ga4DataFetchService.getUTMCampaignReport(startDate, endDate, dbFilter);
           const ga4Data = ga4Response?.data || [];
           const campaignData = ga4Data.filter((d: any) => 
             (d.utm_source || '').toLowerCase().includes('karthikeyan') ||
@@ -104,6 +162,8 @@ export default function CoimbatoreCampaignWidget() {
           ga4Scans = campaignData.reduce((sum: number, item: any) => sum + (item.sessions || 0), 0);
           ga4Visits = campaignData.reduce((sum: number, item: any) => sum + (item.users || 0), 0);
           ga4Conversions = campaignData.reduce((sum: number, item: any) => sum + (item.conversions || 0), 0);
+          
+          setGa4History(campaignData);
         } catch (e) {
           console.error("GA4 fetch error:", e);
         }
@@ -112,8 +172,7 @@ export default function CoimbatoreCampaignWidget() {
         const { data: regsData, error } = await supabase
           .from('player_registrations')
           .select('full_name, phone, email, city, state, status, payment_status, created_at')
-          .ilike('utm_source', '%KARTHIKEYAN%')
-          .ilike('utm_campaign', '%coimbatore%');
+          .or('utm_source.ilike.%karthikeyan%,utm_campaign.ilike.%coimbatore%');
 
         if (error) {
           console.error("Supabase fetch error:", error);
@@ -141,12 +200,23 @@ export default function CoimbatoreCampaignWidget() {
           });
         }
 
+        // 3. Fetch visitor leads for anonymous device tracking
+        const { data: leadsData, error: leadsError } = await supabase
+          .from('visitor_leads')
+          .select('name, email, phone, created_at, utm_source, utm_medium, utm_campaign, qr_code_id')
+          .or('utm_source.ilike.%karthikeyan%,utm_campaign.ilike.%coimbatore%,qr_code_id.ilike.%karthikeyan%,qr_code_id.ilike.%coimbatore%');
+
+        if (!leadsError && leadsData && isMounted) {
+          setRawLeads(leadsData);
+        }
+
         if (isMounted) {
+          const totalLeads = leadsData ? leadsData.length : 0;
+          
           setMetrics({
-            // Prefer GA4 metrics for scans/visits since it captures anonymous traffic.
-            // Fall back to registration attempts if GA4 returns 0 or fails (e.g. edge function 500 error).
-            scans: ga4Scans > 0 ? ga4Scans : totalDBRegistrations,
-            visits: ga4Visits > 0 ? ga4Visits : totalDBRegistrations,
+            // Prefer the highest value among GA4, Visitor Leads, and Registrations
+            scans: Math.max(ga4Scans, totalLeads, totalDBRegistrations),
+            visits: Math.max(ga4Visits, totalLeads, totalDBRegistrations),
             successfulRegistrations: ga4Conversions > 0 ? ga4Conversions : successfulDBRegistrations,
             failedRegistrations: failedDBRegistrations
           });
@@ -161,12 +231,24 @@ export default function CoimbatoreCampaignWidget() {
 
     fetchMetrics();
     
-    // Auto-update every 30 seconds
-    const interval = setInterval(fetchMetrics, 30000);
+    // Auto-update every 60 seconds as a fallback for GA4 data
+    const interval = setInterval(fetchMetrics, 60000);
+
+    // Setup Supabase Realtime Subscriptions for immediate updates
+    const subscription = supabase
+      .channel('coimbatore_campaign_updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_registrations' }, () => {
+        if (isMounted) fetchMetrics();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'visitor_leads' }, () => {
+        if (isMounted) fetchMetrics();
+      })
+      .subscribe();
 
     return () => {
       isMounted = false;
       clearInterval(interval);
+      supabase.removeChannel(subscription);
     };
   }, []);
 
