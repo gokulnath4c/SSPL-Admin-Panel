@@ -74,6 +74,7 @@ export default function DashboardPage() {
             
             const notCalledTrialData = await supabase.from('trial_view').select('name, mobile, email, state, city, proficiency').is('l1_called', null);
             const notCalledTrialList = notCalledTrialData.data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'In (Not Called)' })) || [];
+            const selectedList = selectedData?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'In (Selected)' })) || [];
             playersList = [...selectedList, ...notCalledTrialList, ...notCalledList];
         } else if (type === 'not_called_for') {
             const { data: latestImportData } = await supabase.from('trial_candidates').select('imported_at').order('imported_at', { ascending: false }).limit(1);
