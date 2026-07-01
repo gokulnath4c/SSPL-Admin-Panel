@@ -40,23 +40,61 @@ export default function DashboardPage() {
     setDrillDown(prev => ({ ...prev, isOpen: true, title, loading: true, players: [] }));
     
     let playersList: any[] = [];
+    
+    const formatProficiency = (prof: string | null | undefined) => {
+        if (!prof) return 'All Rounder';
+        const p = prof.trim().toLowerCase();
+        if (p === '' || p === 'na' || p.includes('n/a') || p === 'not specified') return 'All Rounder';
+        // Capitalize first letter of each word
+        return p.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    };
+
     try {
         if (type === 'in') {
-            const [{ data: selectedData }, { data: notCalledData }] = await Promise.all([
+            const [{ data: selectedData }, { data: calledData }, { data: capturedData }] = await Promise.all([
                 supabase.from('trial_view').select('name, mobile, email, state, city, proficiency, final_status').eq('final_status', 'SELECTED'),
-                supabase.from('trial_view').select('name, mobile, email, state, city, proficiency').neq('l1_called', true)
+                supabase.from('trial_view').select('mobile, phone').eq('l1_called', true),
+                supabase.from('player_registrations')
+                    .select('full_name, phone, email, state, city, position')
+                    .in('payment_status', ['captured', 'completed', 'paid', 'success', 'CAPTURED', 'COMPLETED', 'PAID', 'SUCCESS'])
             ]);
-            const selectedList = selectedData?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'In (Selected)' })) || [];
-            const notCalledList = notCalledData?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'In (Not Called)' })) || [];
+            
+            const calledPhones = new Set();
+            calledData?.forEach(d => {
+                if (d.mobile) calledPhones.add(d.mobile);
+                if (d.phone) calledPhones.add(d.phone);
+            });
+            
+            const notCalledList = capturedData
+                ?.filter(d => !calledPhones.has(d.phone))
+                ?.map((p: any) => ({ name: p.full_name, phone: p.phone, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.position), status: 'In (Not Called)' })) || [];
+            
+            const selectedList = selectedData?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'In (Selected)' })) || [];
             playersList = [...selectedList, ...notCalledList];
         } else if (type === 'not_called_for') {
-            const { data } = await supabase.from('trial_view').select('name, mobile, email, state, city, proficiency').neq('l1_called', true);
-            playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Not Called For' })) || [];
+            const [{ data: calledData }, { data: capturedData }] = await Promise.all([
+                supabase.from('trial_view').select('mobile, phone').eq('l1_called', true),
+                supabase.from('player_registrations')
+                    .select('full_name, phone, email, state, city, position')
+                    .in('payment_status', ['captured', 'completed', 'paid', 'success', 'CAPTURED', 'COMPLETED', 'PAID', 'SUCCESS'])
+            ]);
+            
+            const calledPhones = new Set();
+            calledData?.forEach(d => {
+                if (d.mobile) calledPhones.add(d.mobile);
+                if (d.phone) calledPhones.add(d.phone);
+            });
+            
+            const notCalledList = capturedData
+                ?.filter(d => !calledPhones.has(d.phone))
+                ?.map((p: any) => ({ name: p.full_name, phone: p.phone, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.position), status: 'Not Called For' })) || [];
+            
+            playersList = notCalledList;
         } else if (type === 'out') {
             const { data } = await supabase.from('trial_view')
                 .select('name, mobile, email, state, city, proficiency, final_status')
                 .eq('final_status', 'REJECTED');
-            playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Out' })) || [];
+            playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Out' })) || [];
         } else if (type === 'captured') {
                 const { data } = await supabase.from('player_registrations')
                     .select('full_name, phone, email, city, state, payment_status')
@@ -107,100 +145,112 @@ export default function DashboardPage() {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency, l1_called')
                     .eq('l1_called', true);
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Called For' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Called For' })) || [];
             } else if (type === 'not_called_for') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
                     .in('mobile', ['+911111111111', '+9109150247561', '9777321130', '7781853070', '8058484816', '9058037504', '7355753179']);
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Not Called For' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Not Called For' })) || [];
             } else if (type === 'not_selected') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency, final_status')
                     .eq('final_status', 'REJECTED');
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Not Selected' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Not Selected' })) || [];
             } else if (type === 'absentees') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency, l1_attendance, l2_attendance, l3_attendance')
                     .or('l1_attendance.eq.ABSENT,l2_attendance.eq.ABSENT,l3_attendance.eq.ABSENT');
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Absent' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Absent' })) || [];
             } else if (type === 'level1_selected') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency, l1_result')
                     .eq('l1_result', 'SELECTED');
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Selected Level 1' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Selected Level 1' })) || [];
             } else if (type === 'level2_selected') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency, l2_result')
                     .eq('l2_result', 'SELECTED');
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Selected Level 2' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Selected Level 2' })) || [];
             } else if (type === 'level3_selected') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency, l3_result')
                     .eq('l3_result', 'SELECTED');
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Selected Level 3' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Selected Level 3' })) || [];
             } else if (type === 'final_selected') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency, final_status')
                     .eq('final_status', 'SELECTED');
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Selected Final' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Selected Final' })) || [];
             } else if (type === 'in_split_0') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
                     .eq('l1_attendance', 'ABSENT')
                     .eq('l2_attendance', 'ABSENT')
                     .eq('l3_attendance', 'ABSENT');
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Completely Absent' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Completely Absent' })) || [];
             } else if (type === 'in_split_1') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
                     .eq('l1_result', 'SELECTED')
                     .eq('l2_result', 'SELECTED')
                     .eq('l3_result', 'SELECTED');
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Fully Selected' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Fully Selected' })) || [];
             } else if (type === 'in_split_2') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
                     .eq('l1_result', 'SELECTED')
                     .eq('l2_attendance', 'ABSENT')
                     .eq('l3_attendance', 'ABSENT');
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Selected L1, Absent Rest' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Selected L1, Absent Rest' })) || [];
             } else if (type === 'in_split_3') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
                     .eq('l1_result', 'SELECTED')
                     .eq('l2_result', 'SELECTED')
                     .eq('l3_attendance', 'ABSENT');
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Selected L1 & L2, Absent L3' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Selected L1 & L2, Absent L3' })) || [];
             } else if (type === 'in_split_4') {
-                const { data } = await supabase.from('trial_view')
-                    .select('name, mobile, email, state, city, proficiency')
-                    .neq('l1_called', true);
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Not Called For' })) || [];
+                const [{ data: calledData }, { data: capturedData }] = await Promise.all([
+                    supabase.from('trial_view').select('mobile, phone').eq('l1_called', true),
+                    supabase.from('player_registrations')
+                        .select('full_name, phone, email, state, city, position')
+                        .in('payment_status', ['captured', 'completed', 'paid', 'success', 'CAPTURED', 'COMPLETED', 'PAID', 'SUCCESS'])
+                ]);
+                
+                const calledPhones = new Set();
+                calledData?.forEach(d => {
+                    if (d.mobile) calledPhones.add(d.mobile);
+                    if (d.phone) calledPhones.add(d.phone);
+                });
+                
+                playersList = capturedData
+                    ?.filter(d => !calledPhones.has(d.phone))
+                    ?.map((p: any) => ({ name: p.full_name, phone: p.phone, email: p.email, city: p.city || '-', state: p.state, proficiency: p.position || 'All Rounder', status: 'Not Called For' })) || [];
             } else if (type === 'level1_selected_level2_absent') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
                     .eq('l1_result', 'SELECTED')
                     .eq('l2_attendance', 'ABSENT')
                     .eq('l3_attendance', 'ABSENT');
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Level 1 Selected, Level 2 Absent' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Level 1 Selected, Level 2 Absent' })) || [];
             } else if (type === 'proficiency_0') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
                     .ilike('proficiency', '%BATSMAN%')
                     .eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED');
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Batsman' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Batsman' })) || [];
             } else if (type === 'proficiency_1') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
                     .ilike('proficiency', '%BOWLER%')
                     .eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED');
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'Bowler' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Bowler' })) || [];
             } else if (type === 'proficiency_2') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
                     .or('proficiency.ilike.%ALL ROUNDER%,proficiency.ilike.%AR%,proficiency.ilike.%ALL-ROUNDER%,proficiency.is.null,proficiency.eq.,proficiency.eq.NA,proficiency.ilike.N/A%')
                     .eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED');
-                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: (p.proficiency && p.proficiency.trim() !== '' && p.proficiency !== 'NA' && !p.proficiency.includes('N/A')) ? p.proficiency : 'All Rounder', status: 'All Rounder' })) || [];
+                playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'All Rounder' })) || [];
             }
     } catch (e) {
         console.error('Drill down fetch error:', e);

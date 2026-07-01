@@ -267,7 +267,9 @@ export function useDashboard(): UseDashboardReturn {
 
       const totalTrialCandidates = totalTrialCandidatesCount || 0;
       calledForCount = l1CalledCount || 0;
-      notCalledForCount = Math.max(0, totalTrialCandidates - calledForCount);
+      // New registrations might not be in trial_view yet, but they are captured.
+      // So we use capturedCount to represent all valid candidates.
+      notCalledForCount = Math.max(0, capturedCount - calledForCount);
       selectedCount = finalSelectedCount || 0;
       notSelectedCount = Math.max(0, calledForCount - selectedCount);
       const computedOutStationCount = finalRejectedCount || 0;
