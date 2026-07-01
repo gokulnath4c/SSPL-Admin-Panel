@@ -60,13 +60,13 @@ export default function DashboardPage() {
             ]);
             
             const calledPhones = new Set();
-            calledData?.forEach(d => {
+            calledData?.forEach((d: any) => {
                 if (d.mobile) calledPhones.add(d.mobile);
                 if (d.phone) calledPhones.add(d.phone);
             });
             
             const notCalledList = capturedData
-                ?.filter(d => !calledPhones.has(d.phone))
+                ?.filter((d: any) => !calledPhones.has(d.phone))
                 ?.map((p: any) => ({ name: p.full_name, phone: p.phone, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.position), status: 'In (Not Called)' })) || [];
             
             const selectedList = selectedData?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'In (Selected)' })) || [];
@@ -80,13 +80,13 @@ export default function DashboardPage() {
             ]);
             
             const calledPhones = new Set();
-            calledData?.forEach(d => {
+            calledData?.forEach((d: any) => {
                 if (d.mobile) calledPhones.add(d.mobile);
                 if (d.phone) calledPhones.add(d.phone);
             });
             
             const notCalledList = capturedData
-                ?.filter(d => !calledPhones.has(d.phone))
+                ?.filter((d: any) => !calledPhones.has(d.phone))
                 ?.map((p: any) => ({ name: p.full_name, phone: p.phone, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.position), status: 'Not Called For' })) || [];
             
             playersList = notCalledList;
@@ -218,14 +218,14 @@ export default function DashboardPage() {
                 ]);
                 
                 const calledPhones = new Set();
-                calledData?.forEach(d => {
+                calledData?.forEach((d: any) => {
                     if (d.mobile) calledPhones.add(d.mobile);
                     if (d.phone) calledPhones.add(d.phone);
                 });
                 
                 playersList = capturedData
-                    ?.filter(d => !calledPhones.has(d.phone))
-                    ?.map((p: any) => ({ name: p.full_name, phone: p.phone, email: p.email, city: p.city || '-', state: p.state, proficiency: p.position || 'All Rounder', status: 'Not Called For' })) || [];
+                    ?.filter((d: any) => !calledPhones.has(d.phone))
+                    ?.map((p: any) => ({ name: p.full_name, phone: p.phone, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.position), status: 'Not Called For' })) || [];
             } else if (type === 'level1_selected_level2_absent') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')
