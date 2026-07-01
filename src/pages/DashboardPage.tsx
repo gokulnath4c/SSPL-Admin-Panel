@@ -51,12 +51,15 @@ export default function DashboardPage() {
 
     try {
         if (type === 'in') {
+            const { data: latestImportData } = await supabase.from('trial_candidates').select('imported_at').order('imported_at', { ascending: false }).limit(1);
+            const lastImportDate = latestImportData?.[0]?.imported_at || '1970-01-01T00:00:00.000Z';
             const [{ data: selectedData }, { data: calledData }, { data: capturedData }] = await Promise.all([
                 supabase.from('trial_view').select('name, mobile, email, state, city, proficiency, final_status').eq('final_status', 'SELECTED'),
                 supabase.from('trial_view').select('mobile, phone').eq('l1_called', true),
                 supabase.from('player_registrations')
                     .select('full_name, phone, email, state, city, position')
                     .in('payment_status', ['captured', 'completed', 'paid', 'success', 'CAPTURED', 'COMPLETED', 'PAID', 'SUCCESS'])
+                    .gt('created_at', lastImportDate)
             ]);
             
             const calledPhones = new Set();
@@ -69,14 +72,18 @@ export default function DashboardPage() {
                 ?.filter((d: any) => !calledPhones.has(d.phone))
                 ?.map((p: any) => ({ name: p.full_name, phone: p.phone, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.position), status: 'In (Not Called)' })) || [];
             
-            const selectedList = selectedData?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'In (Selected)' })) || [];
-            playersList = [...selectedList, ...notCalledList];
+            const notCalledTrialData = await supabase.from('trial_view').select('name, mobile, email, state, city, proficiency').is('l1_called', null);
+            const notCalledTrialList = notCalledTrialData.data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'In (Not Called)' })) || [];
+            playersList = [...selectedList, ...notCalledTrialList, ...notCalledList];
         } else if (type === 'not_called_for') {
+            const { data: latestImportData } = await supabase.from('trial_candidates').select('imported_at').order('imported_at', { ascending: false }).limit(1);
+            const lastImportDate = latestImportData?.[0]?.imported_at || '1970-01-01T00:00:00.000Z';
             const [{ data: calledData }, { data: capturedData }] = await Promise.all([
                 supabase.from('trial_view').select('mobile, phone').eq('l1_called', true),
                 supabase.from('player_registrations')
                     .select('full_name, phone, email, state, city, position')
                     .in('payment_status', ['captured', 'completed', 'paid', 'success', 'CAPTURED', 'COMPLETED', 'PAID', 'SUCCESS'])
+                    .gt('created_at', lastImportDate)
             ]);
             
             const calledPhones = new Set();
@@ -88,8 +95,9 @@ export default function DashboardPage() {
             const notCalledList = capturedData
                 ?.filter((d: any) => !calledPhones.has(d.phone))
                 ?.map((p: any) => ({ name: p.full_name, phone: p.phone, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.position), status: 'Not Called For' })) || [];
-            
-            playersList = notCalledList;
+            const notCalledTrialData = await supabase.from('trial_view').select('name, mobile, email, state, city, proficiency').is('l1_called', null);
+            const notCalledTrialList = notCalledTrialData.data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Not Called For' })) || [];
+            playersList = [...notCalledTrialList, ...notCalledList];
         } else if (type === 'out') {
             const { data } = await supabase.from('trial_view')
                 .select('name, mobile, email, state, city, proficiency, final_status')
@@ -210,11 +218,14 @@ export default function DashboardPage() {
                     .eq('l3_attendance', 'ABSENT');
                 playersList = data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Selected L1 & L2, Absent L3' })) || [];
             } else if (type === 'in_split_4') {
+                const { data: latestImportData } = await supabase.from('trial_candidates').select('imported_at').order('imported_at', { ascending: false }).limit(1);
+                const lastImportDate = latestImportData?.[0]?.imported_at || '1970-01-01T00:00:00.000Z';
                 const [{ data: calledData }, { data: capturedData }] = await Promise.all([
                     supabase.from('trial_view').select('mobile, phone').eq('l1_called', true),
                     supabase.from('player_registrations')
                         .select('full_name, phone, email, state, city, position')
                         .in('payment_status', ['captured', 'completed', 'paid', 'success', 'CAPTURED', 'COMPLETED', 'PAID', 'SUCCESS'])
+                        .gt('created_at', lastImportDate)
                 ]);
                 
                 const calledPhones = new Set();
@@ -223,9 +234,12 @@ export default function DashboardPage() {
                     if (d.phone) calledPhones.add(d.phone);
                 });
                 
-                playersList = capturedData
+                const notCalledNewList = capturedData
                     ?.filter((d: any) => !calledPhones.has(d.phone))
                     ?.map((p: any) => ({ name: p.full_name, phone: p.phone, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.position), status: 'Not Called For' })) || [];
+                const notCalledTrialData = await supabase.from('trial_view').select('name, mobile, email, state, city, proficiency').is('l1_called', null);
+                const notCalledTrialList = notCalledTrialData.data?.map((p: any) => ({ name: p.name, phone: p.mobile, email: p.email, city: p.city || '-', state: p.state, proficiency: formatProficiency(p.proficiency), status: 'Not Called For' })) || [];
+                playersList = [...notCalledTrialList, ...notCalledNewList];
             } else if (type === 'level1_selected_level2_absent') {
                 const { data } = await supabase.from('trial_view')
                     .select('name, mobile, email, state, city, proficiency')

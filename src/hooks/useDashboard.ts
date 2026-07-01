@@ -240,7 +240,8 @@ export function useDashboard(): UseDashboardReturn {
         { count: finalSelectedCount },
         { count: finalRejectedCount },
         { count: l1CalledCount },
-        { count: totalTrialCandidatesCount }
+        { count: totalTrialCandidatesCount },
+        { data: latestImportData }
       ] = await Promise.all([
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_attendance', 'ABSENT').eq('l2_attendance', 'ABSENT').eq('l3_attendance', 'ABSENT'), // count0: Completely Absent
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_result', 'SELECTED').eq('l2_result', 'SELECTED').eq('l3_result', 'SELECTED'), // count1: Finally Selected
@@ -258,8 +259,16 @@ export function useDashboard(): UseDashboardReturn {
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('final_status', 'SELECTED'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('final_status', 'REJECTED'),
         supabase.from('trial_view').select('*', { count: 'exact', head: true }).eq('l1_called', true),
-        supabase.from('trial_view').select('*', { count: 'exact', head: true })
+        supabase.from('trial_view').select('*', { count: 'exact', head: true }),
+        supabase.from('trial_candidates').select('imported_at').order('imported_at', { ascending: false }).limit(1)
       ]);
+
+      const lastImportDate = latestImportData?.[0]?.imported_at || '1970-01-01T00:00:00.000Z';
+      const { count: newCapturedCount } = await supabase
+        .from('player_registrations')
+        .select('*', { count: 'exact', head: true })
+        .in('payment_status', ['captured', 'completed', 'paid', 'success', 'CAPTURED', 'COMPLETED', 'PAID', 'SUCCESS'])
+        .gt('created_at', lastImportDate);
 
       level1Selected = level1SelectedCount || 0;
       level2Selected = level2SelectedCount || 0;
@@ -267,9 +276,8 @@ export function useDashboard(): UseDashboardReturn {
 
       const totalTrialCandidates = totalTrialCandidatesCount || 0;
       calledForCount = l1CalledCount || 0;
-      // New registrations might not be in trial_view yet, but they are captured.
-      // So we use capturedCount to represent all valid candidates.
-      notCalledForCount = Math.max(0, capturedCount - calledForCount);
+      // Not called for is those in trial candidates who haven't been called, PLUS new captured registrations since the last import
+      notCalledForCount = Math.max(0, totalTrialCandidates - calledForCount) + (newCapturedCount || 0);
       selectedCount = finalSelectedCount || 0;
       notSelectedCount = Math.max(0, calledForCount - selectedCount);
       const computedOutStationCount = finalRejectedCount || 0;
